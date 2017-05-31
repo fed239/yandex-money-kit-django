@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from collections import namedtuple
 from hashlib import md5
 from django import forms
 from django.conf import settings
@@ -65,15 +66,29 @@ class BasePaymentForm(forms.Form):
     action = forms.CharField(max_length=16)
 
     def __init__(self, *args, **kwargs):
+        self.settings = kwargs.pop('settings', None)
+        if self.settings is None:
+            self.settings = (
+                lambda opts: namedtuple(
+                    'YandexMoneySettings',
+                    opts,
+                )(*[getattr(settings, opt, None) for opt in opts])
+            )([
+                'YANDEX_ALLOWED_PAYMENT_TYPES',
+                'YANDEX_MONEY_SCID',
+                'YANDEX_MONEY_SHOP_ID',
+                'YANDEX_MONEY_SHOP_PASSWORD',
+                'YANDEX_MONEY_FAIL_URL',
+                'YANDEX_MONEY_SUCCESS_URL',
+            ])
         super(BasePaymentForm, self).__init__(*args, **kwargs)
-        if hasattr(settings, 'YANDEX_ALLOWED_PAYMENT_TYPES'):
-            allowed_payment_types = settings.YANDEX_ALLOWED_PAYMENT_TYPES
+        if self.settings.YANDEX_ALLOWED_PAYMENT_TYPES is not None:
+            allowed_payment_types = self.settings.YANDEX_ALLOWED_PAYMENT_TYPES
             self.fields['paymentType'].widget.choices = filter(
                 lambda x: x[0] in allowed_payment_types,
                 self.fields['paymentType'].widget.choices)
 
-    @classmethod
-    def make_md5(cls, cd):
+    def make_md5(self, cd):
         """
         action;orderSumAmount;orderSumCurrencyPaycash;orderSumBankPaycash;shopId;invoiceId;customerNumber;shopPassword
         """
@@ -85,17 +100,16 @@ class BasePaymentForm(forms.Form):
             cd['shopId'],
             cd['invoiceId'],
             cd['customerNumber'],
-            settings.YANDEX_MONEY_SHOP_PASSWORD,
+            self.settings.YANDEX_MONEY_SHOP_PASSWORD,
         )))).hexdigest().upper()
 
-    @classmethod
-    def check_md5(cls, cd):
-        return cls.make_md5(cd) == cd['md5']
+    def check_md5(self, cd):
+        return self.make_md5(cd) == cd['md5']
 
     def clean_scid(self):
         scid = self.cleaned_data['scid']
         if (
-            scid != settings.YANDEX_MONEY_SCID and
+            scid != self.settings.YANDEX_MONEY_SCID and
             not scid in Payment.get_used_scids()
         ):
             raise forms.ValidationError(self.error_messages[self.ERROR_MESSAGE_CODES.BAD_SCID])
@@ -104,7 +118,7 @@ class BasePaymentForm(forms.Form):
     def clean_shopId(self):
         shop_id = self.cleaned_data['shopId']
         if (
-            shop_id != settings.YANDEX_MONEY_SHOP_ID and
+            shop_id != self.settings.YANDEX_MONEY_SHOP_ID and
             not shop_id in Payment.get_used_shop_ids()
         ):
             raise forms.ValidationError(self.error_messages[self.ERROR_MESSAGE_CODES.BAD_SHOP_ID])
