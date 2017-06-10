@@ -81,6 +81,13 @@ class BasePaymentForm(forms.Form):
                 'YANDEX_MONEY_FAIL_URL',
                 'YANDEX_MONEY_SUCCESS_URL',
             ])
+        else:
+            initial = {
+                'shopId': self.settings.YANDEX_MONEY_SHOP_ID,
+                'scid': self.settings.YANDEX_MONEY_SCID,
+            }
+            initial.update(kwargs.get('initial', {}))
+            kwargs['initial'] = initial
         super(BasePaymentForm, self).__init__(*args, **kwargs)
         if self.settings.YANDEX_ALLOWED_PAYMENT_TYPES is not None:
             allowed_payment_types = self.settings.YANDEX_ALLOWED_PAYMENT_TYPES
