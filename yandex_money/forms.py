@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from collections import namedtuple
 from hashlib import md5
 from django import forms
 from django.conf import settings
-from .models import Payment
+from .models import DEFAULT_SETTINGS, Payment
 
 
 class BasePaymentForm(forms.Form):
@@ -68,19 +67,7 @@ class BasePaymentForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.settings = kwargs.pop('settings', None)
         if self.settings is None:
-            self.settings = (
-                lambda opts: namedtuple(
-                    'YandexMoneySettings',
-                    opts,
-                )(*[getattr(settings, opt, None) for opt in opts])
-            )([
-                'YANDEX_ALLOWED_PAYMENT_TYPES',
-                'YANDEX_MONEY_SCID',
-                'YANDEX_MONEY_SHOP_ID',
-                'YANDEX_MONEY_SHOP_PASSWORD',
-                'YANDEX_MONEY_FAIL_URL',
-                'YANDEX_MONEY_SUCCESS_URL',
-            ])
+            self.settings = DEFAULT_SETTINGS
         else:
             initial = {
                 'shopId': self.settings.YANDEX_MONEY_SHOP_ID,

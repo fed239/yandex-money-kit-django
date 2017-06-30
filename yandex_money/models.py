@@ -1,12 +1,28 @@
 # -*- coding: utf-8 -*-
 
 from uuid import uuid4
+from collections import namedtuple
 
 from django.conf import settings
 from django.db import models
 
 from .signals import payment_process
 from .signals import payment_completed
+
+
+DEFAULT_SETTINGS = (
+    lambda opts: namedtuple(
+        'YandexMoneySettings',
+        opts,
+    )(*[getattr(settings, opt, None) for opt in opts])
+)([
+    'YANDEX_ALLOWED_PAYMENT_TYPES',
+    'YANDEX_MONEY_SCID',
+    'YANDEX_MONEY_SHOP_ID',
+    'YANDEX_MONEY_SHOP_PASSWORD',
+    'YANDEX_MONEY_FAIL_URL',
+    'YANDEX_MONEY_SUCCESS_URL',
+])
 
 
 def get_default_as_uuid():
@@ -68,9 +84,9 @@ class Payment(models.Model):
 
     # Required request fields
     shop_id = models.PositiveIntegerField(
-        u'ID магазина', default=settings.YANDEX_MONEY_SHOP_ID)
+        u'ID магазина', default=DEFAULT_SETTINGS.YANDEX_MONEY_SHOP_ID)
     scid = models.PositiveIntegerField(
-        u'Номер витрины', default=settings.YANDEX_MONEY_SCID)
+        u'Номер витрины', default=DEFAULT_SETTINGS.YANDEX_MONEY_SCID)
     customer_number = models.CharField(
         u'Идентификатор плательщика', max_length=64,
         default=get_default_as_uuid)
@@ -91,9 +107,9 @@ class Payment(models.Model):
     cps_phone = models.CharField(
         u'Телефон плательщика', max_length=15, blank=True, null=True)
     success_url = models.URLField(
-        u'URL успешной оплаты', default=settings.YANDEX_MONEY_SUCCESS_URL)
+        u'URL успешной оплаты', default=DEFAULT_SETTINGS.YANDEX_MONEY_SUCCESS_URL)
     fail_url = models.URLField(
-        u'URL неуспешной оплаты', default=settings.YANDEX_MONEY_FAIL_URL)
+        u'URL неуспешной оплаты', default=DEFAULT_SETTINGS.YANDEX_MONEY_FAIL_URL)
 
     # Transaction info
     status = models.CharField(

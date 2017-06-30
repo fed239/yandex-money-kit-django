@@ -14,7 +14,7 @@ from lxml.builder import E
 
 from .forms import CheckForm
 from .forms import NoticeForm
-from .models import Payment
+from .models import DEFAULT_SETTINGS, Payment
 
 
 logger = logging.getLogger('yandex_money')
@@ -31,12 +31,17 @@ class YandexValidationError(Exception):
 class BaseView(View):
     form_class = None
 
+    def __init__(self, *args, **kwargs):
+        self.settings = kwargs.pop('settings', None)
+        if self.settings is None:
+            self.settings = DEFAULT_SETTINGS
+
     @method_decorator(csrf_exempt)
     def dispatch(self, *args, **kwargs):
         return super(BaseView, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        form = self.form_class(request.POST)
+        form = self.form_class(request.POST, settings=self.settings)
         if form.is_valid():
             cd = form.cleaned_data
             if form.check_md5(cd):
@@ -61,7 +66,7 @@ class BaseView(View):
         content = self.get_xml(params)
 
         if (
-            getattr(settings, 'YANDEX_MONEY_MAIL_ADMINS_ON_PAYMENT_ERROR', True) and
+            getattr(self.settings, 'YANDEX_MONEY_MAIL_ADMINS_ON_PAYMENT_ERROR', True) and
             params.get('code') != '0'
         ):
             mail_admins('yandexmoney_django error', u'post data: {post_data}\n\nresponse:{response}'.format(
